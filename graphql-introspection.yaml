@@ -1,0 +1,41 @@
+id: graphql-introspection
+
+info:
+  name: GraphQL Introspection Query
+  author: DAAKU
+  severity: info
+  description: Detects exposed GraphQL endpoints with introspection enabled
+  tags: graphql,api,misconfig
+
+http:
+  - method: POST
+    path:
+      - "{{BaseURL}}/graphql"
+      - "{{BaseURL}}/v1/graphql"
+      - "{{BaseURL}}/api/graphql"
+      - "{{BaseURL}}/query"
+      
+    body: |
+      {
+        "query": "query { __schema { types { name fields { name } } } }"
+      }
+      
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "__schema"
+          - "types"
+          - "fields"
+        condition: and
+        
+    extractors:
+      - type: json
+        part: body
+        json:
+          - ".['data']['__schema']['types'][0]['name']"
