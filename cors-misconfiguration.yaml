@@ -1,0 +1,42 @@
+id: cors-misconfiguration
+
+info:
+  name: CORS Misconfiguration Detection
+  author: DAAKU
+  severity: medium
+  description: Detects permissive CORS policies allowing arbitrary origins
+  tags: misconfig,cors,web
+
+http:
+  - raw:
+      - |
+        GET /api/users HTTP/1.1
+        Host: {{Hostname}}
+        Origin: https://evil.com
+        Referer: https://evil.com/phishing
+        
+      - |
+        OPTIONS /api/users HTTP/1.1
+        Host: {{Hostname}}
+        Origin: null
+        Access-Control-Request-Method: GET
+        
+      - |
+        GET /api/admin HTTP/1.1
+        Host: {{Hostname}}
+        Origin: https://attacker.com
+
+    matchers-condition: or
+    matchers:
+      - type: word
+        part: header
+        words:
+          - "Access-Control-Allow-Origin: https://evil.com"
+          - "Access-Control-Allow-Origin: null"
+          - "Access-Control-Allow-Credentials: true"
+          
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "Access-Control-Allow-Origin: (.*)"
