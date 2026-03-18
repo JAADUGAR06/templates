@@ -1,8 +1,8 @@
 id: ultimate-open-redirect-injector
 
 info:
-  name: DAAKU
-  author: YourUsername
+  name: open-redirect-injector
+  author: UMESH
   severity: high
   description: Comprehensive open redirect testing with multiple injection vectors
   tags: open-redirect,injection,xss,sqli,xxe,ssrf
@@ -171,9 +171,9 @@ requests:
   # WAF Bypass Techniques
   - method: GET
     path:
-      - "{{BaseURL}}?next=%25%33%68%25%74%25%74%25%70%25%73%25%33%61%25%32%66%25%32%66%65%76%69%6c%2e%63%6f%6d"  # URL encoded
-      - "{{BaseURL}}?redirect=//evil%E3%80%82com"  # Unicode bypass
-      - "{{BaseURL}}?url=https://evil.com#@google.com"  # Fragment bypass
+      - "{{BaseURL}}?next=%25%33%68%25%74%25%74%25%70%25%73%25%33%61%25%32%66%25%32%66%65%76%69%6c%2e%63%6f%6d" 
+      - "{{BaseURL}}?redirect=//evil%E3%80%82com" 
+      - "{{BaseURL}}?url=https://evil.com#@google.com" 
       
     matchers:
       - type: regex
