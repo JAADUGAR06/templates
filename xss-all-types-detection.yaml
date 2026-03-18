@@ -2,7 +2,7 @@ id: xss-all-types-detection
 
 info:
   name: Complete XSS Detection - All Types
-  author: DAAKU
+  author: UMESH
   severity: critical,high,medium,info
   description: Detects all types of XSS vulnerabilities including Reflected, Stored, DOM-based, Blind, and Self-XSS with proof extraction
   tags: xss,reflected,stored,dom,blind,injection
