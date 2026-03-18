@@ -1,17 +1,16 @@
 id: advanced-open-redirect-chain
 
-info:
-  name: DAAKU
-  author: your-username
-  severity: high  # Low से High कर दिया क्योंकि चेनिंग का इम्पैक्ट दिखा रहे हैं
+info: open-redirect
+  name: UMESH
+  author: UMESH
+  severity: high 
   description: |
-    यह टेम्प्लेट Open Redirect को डिटेक्ट करता है और उसे XSS, CRLF Injection, 
-    और Blind SSRF के साथ चेन करता है। एक साधारण redirect vulnerability 
-    को account takeover या internal network access तक बढ़ाया जा सकता है।
-  remediation: |
-    URL रीडायरेक्ट के लिए वैलिडेशन लागू करें। 
-    उपयोगकर्ता द्वारा प्रदान किए गए URLs को अलाउड डोमेन की व्हाइटलिस्ट से मैच करें।
-    javascript://, data://, vbscript:// जैसे प्रोटोकॉल को ब्लॉक करें।
+    Open Redirect XSS, CRLF Injection, 
+    Blind SSRF redirect vulnerability 
+    account takeover internal network access 
+    remediation: |
+    URLs
+    javascript://, data://, vbscript://
   classification:
     cvss-score: 7.4
     cwe-id: CWE-601
@@ -45,7 +44,7 @@ http:
     stop-at-first-match: true
     matchers-condition: or
     matchers:
-      # Matcher 1: Open Redirect (302/301 Status के साथ evil.com की Location)
+      # Matcher 1: Open Redirect (302/301 Status  evil.com  Location)
       - type: word
         part: header
         words:
@@ -55,44 +54,40 @@ http:
           - "Location: \\evil.com"
         condition: or
 
-      # Matcher 2: XSS प्रोटोकॉल बाइपास (javascript:)
+      # Matcher 2: XSS (javascript:)
       - type: word
         part: body
         words:
           - "<script>alert(document.domain)</script>"
           - "alert(document.domain)"
 
-      # Matcher 3: CRLF Injection (हेडर में नई लाइन इंजेक्ट हुई)
+      # Matcher 3: CRLF Injection
       - type: word
         part: header
         words:
           - "Location: /%0d%0aLocation:"
           - "%0d%0aContent-Length:"
 
-      # Matcher 4: SSRF/Blind Interaction (इंटरेक्शन डिटेक्ट करें)
+      # Matcher 4: SSRF/Blind Interaction
       - type: dsl
         dsl:
           - "contains(interactsh_protocol, 'http') || contains(interactsh_protocol, 'dns')"
 
-      # Matcher 5: Data Protocol बाइपास (XSS के लिए)
       - type: word
         part: header
         words:
           - "data:text/html"
 
     extractors:
-      # Location हेडर एक्सट्रैक्ट करें (रिपोर्ट के लिए)
       - type: regex
         part: header
         regex:
           - "Location: (.*)"
 
-      # सर्वर इंफो एक्सट्रैक्ट करें
       - type: regex
         part: header
         regex:
           - "Server: (.*)"
           - "X-Powered-By: (.*)"
 
-    # रीडायरेक्ट फॉलो न करें (असल व्यवहार देखना है)
     max-redirects: 0
