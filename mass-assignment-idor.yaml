@@ -2,7 +2,7 @@ id: mass-assignment-idor
 
 info:
   name: Mass Assignment & IDOR Detection
-  author: DAAKU
+  author: UMESH
   severity: high
   description: Tests for mass assignment vulnerabilities and IDOR
   tags: idor,mass-assignment,api
